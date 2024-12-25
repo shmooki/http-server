@@ -17,16 +17,18 @@
 // signal handler for SIGINT
 void sigInt(int sig){
     printf("\nShutting down server...");
+    fflush(stdout);
+
     sleep(5);
     closeLogFile();
-    exit(EXIT_SUCCESS);
+    return;
 }
+
 int main(){
     signal(SIGINT, sigInt);     //sigint handler
     openLogFile();              // open activity_log to document requests  
 
-    int server_socket;          // create & bind sockets
-    int *client_socket = malloc(sizeof(int));
+    int server_socket, client_socket; 
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
     if((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -55,24 +57,26 @@ int main(){
     fflush(stdout);
 
     while(1){
-        *client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
+        client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
         if(client_socket< 0){
             perror("\nError: Failed to accept client connection");
-            free(client_socket);
+            close(client_socket);
             continue;
         }
-        printf("\nClient connected to server.");
-        fflush(stdout);
-        
+
+        int *client_ptr = malloc(sizeof(int));
+        *client_ptr = client_socket;
         pthread_t thread_id;
-        if(pthread_create(&thread_id, NULL, processCommands, (void*)client_socket) != 0){
-            perror("\nThread creation failed");
-            free(client_socket);
+        if(pthread_create(&thread_id, NULL, processCommands, client_ptr) != 0){
+            perror("\nError: Failed to create thread");
+            close(client_socket);
+            free(client_ptr);
             continue;
         }
         pthread_detach(thread_id);
     }
 
+    close(client_socket);
     close(server_socket);
     closeLogFile();
     return 0;

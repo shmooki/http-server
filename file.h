@@ -7,7 +7,7 @@ extern pthread_mutex_t log_mutex;
 
 void openLogFile();
 void closeLogFile();
-void clientConnected();
-void clientDisconnected();
+void clientConnected(int client_socket);
+void clientDisconnected(int client_socket);
 
 #endif
