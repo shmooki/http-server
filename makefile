@@ -3,7 +3,7 @@ CFLAGS = -Wall -g
 
 TARGET = main
 
-SRC = main.c request.c
+SRC = main.c request.c file.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)
