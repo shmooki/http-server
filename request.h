@@ -2,5 +2,6 @@
 #define request_h
 
 void* processCommands(void* arg);
+void url_decode(const char* url);
 
 #endif

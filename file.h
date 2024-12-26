@@ -6,8 +6,9 @@ extern int client_count;
 extern pthread_mutex_t log_mutex;
 
 void openLogFile();
-void closeLogFile();
+void closeLogFile(char* errorMessage);
 void clientConnected(int client_socket);
 void clientDisconnected(int client_socket);
+void openBufferFile(char* buffer);
 
 #endif

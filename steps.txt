@@ -1,3 +1,6 @@
 request.c:
 ----------
-1. 
+1. parse buffer in request.c to see if it is a valid GET request
+2. extract requested file name
+3. identify extension
+4. build http response

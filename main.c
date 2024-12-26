@@ -2,82 +2,101 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/shm.h>
-#include <sys/ipc.h>
 #include <arpa/inet.h>
 #include <fcntl.h> 
 #include <pthread.h>
+#include <signal.h>
+#include <errno.h>
 #include "request.h"
 #include "file.h"
-#include <signal.h>
 
-#define PORT 12345
+#define PORT 8080
 
 // signal handler for SIGINT
 void sigInt(int sig){
-    printf("\nShutting down server...");
+    printf("\nShutting down server...\n");
     fflush(stdout);
 
-    sleep(5);
-    closeLogFile();
-    return;
+    sleep(2);
+    closeLogFile(NULL);
+    exit(EXIT_SUCCESS);
 }
 
 int main(){
-    signal(SIGINT, sigInt);     //sigint handler
-    openLogFile();              // open activity_log to document requests  
+    signal(SIGINT, sigInt);         //sigint handler
+    openLogFile();                  // open activity_log.txt to document requests  
+    char errorMessage[1024] = {0};  // for error messages in activity_log.txt
 
-    int server_socket, client_socket; 
+    // create server and client sockets
+    int server_fd, client_fd; 
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
-    if((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+    if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("Error: Failed to create socket.");
+        strcpy(errorMessage, strerror(errno));      
+        strcat(errorMessage, ". Failed to create socket.");                     // concatenate error so it can be printed to activity_log.txt
+        close(server_fd);
+        closeLogFile(errorMessage);
         exit(EXIT_FAILURE);
     }
     printf("Socket created successfully.");
     fflush(stdout);
-
+    
+    // bind server socket to port
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
-    if(bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr))< 0){
+    if(bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr))< 0){
         perror("\nError: Failed to bind to socket");
-        close(server_socket);
+        strcpy(errorMessage, strerror(errno));
+        strcat(errorMessage, ". Failed to bind to socket.");                    // concatenate error so it can be printed to activity_log.txt
+        close(server_fd);
+        closeLogFile(errorMessage);
         exit(EXIT_FAILURE);
     }
     printf("\nSocket bound to port %d.", PORT);
 
-    if(listen(server_socket, 5) < 0){
+    // listen for incoming connections
+    if(listen(server_fd, 5) < 0){
         perror("\nError: Failed to listen on socket");
-        close(server_socket);
+        strcpy(errorMessage, strerror(errno));
+        strcat(errorMessage, ". Failed to listen on socket.");                  // concatenate error so it can be printed to activity_log.txt
+        close(server_fd);
+        closeLogFile(errorMessage);
         exit(EXIT_FAILURE);
     }
     printf("\nServer listening on port %d.", PORT);
     fflush(stdout);
 
+    // process incoming client connections
     while(1){
-        client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
-        if(client_socket< 0){
+        client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+        if(client_fd < 0){
             perror("\nError: Failed to accept client connection");
-            close(client_socket);
-            continue;
+            strcpy(errorMessage, strerror(errno));
+            strcat(errorMessage, ". Failed accept client connection.");         // concatenate error so it can be printed to activity_log.txt
+            close(client_fd);
+            closeLogFile(errorMessage);
+            continue;   // can try again w/ this error
         }
 
         int *client_ptr = malloc(sizeof(int));
-        *client_ptr = client_socket;
+        *client_ptr = client_fd;
         pthread_t thread_id;
         if(pthread_create(&thread_id, NULL, processCommands, client_ptr) != 0){
             perror("\nError: Failed to create thread");
-            close(client_socket);
+            strcpy(errorMessage, strerror(errno));
+            strcat(errorMessage, ". Failed to create thread.");                 // concatenate error so it can be printed to activity_log.txt
+            close(client_fd);
             free(client_ptr);
-            continue;
+            closeLogFile(errorMessage);
+            continue;   // can try again w/ this error
         }
         pthread_detach(thread_id);
     }
 
-    close(client_socket);
-    close(server_socket);
-    closeLogFile();
+    close(client_fd);
+    close(server_fd);
+    closeLogFile(errorMessage);
     return 0;
 }
