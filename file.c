@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
+#include <ctype.h>
 #include "file.h"
+#include <unistd.h>
 
 int client_count = 0;
-pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;      // mutex for thread-safe file access
 
-// prints when server was started to activity_log.txt
+// prints when server was started to server_activity.log
 void openLogFile(){
-    FILE* file = fopen("activity_log.txt", "a");
+    pthread_mutex_lock(&log_mutex);
+    FILE* file = fopen("server_activity.log", "a");
     if(!file){
-        perror("\nError: Failed to open actitvity_log.txt");
+        perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
     time_t curTime = time (NULL);
@@ -19,13 +22,15 @@ void openLogFile(){
     fprintf(file, "-----------------------------------------------\n");
     fprintf(file, "Activity log started on %sServer has been started.\n", asctime(local_time));
     fclose(file);
+    pthread_mutex_unlock(&log_mutex);
 }
 
-// prints when server was stopped to activity_log.txt
+// prints when server was stopped to server_activity.log
 void closeLogFile(char* errorMessage){
-    FILE* file = fopen("activity_log.txt", "a");
+    pthread_mutex_lock(&log_mutex);
+    FILE* file = fopen("server_activity.log", "a");
     if(!file){
-        perror("\nError: Failed to open actitvity_log.txt");
+        perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
 
@@ -43,16 +48,16 @@ void closeLogFile(char* errorMessage){
         fprintf(file, "Activity log closed on %s", asctime(local_time));
         fclose(file);
     }
-    
+    pthread_mutex_unlock(&log_mutex);
 }
 
-// prints when a client has been connected to server to activity_log.txt
+// prints when a client has been connected to server to server_activity.log
 void clientConnected(int client_socket){
     client_count++;
     pthread_mutex_lock(&log_mutex);
-    FILE* file = fopen("activity_log.txt", "a");
+    FILE* file = fopen("server_activity.log", "a");
     if(!file){
-        perror("\nError: Failed to open actitvity_log.txt");
+        perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
     fprintf(file, "Client connected to server. There are %d client(s) connected.\n", client_count);
@@ -70,12 +75,12 @@ void clientConnected(int client_socket){
     pthread_mutex_unlock(&log_mutex);
 }
 
-// prints when a client has been disconnected to server to activity_log.txt
+// prints when a client has been disconnected to server to server_activity.log
 void clientDisconnected(int client_socket){
     pthread_mutex_lock(&log_mutex);
-    FILE* file = fopen("activity_log.txt", "a");
+    FILE* file = fopen("server_activity.log", "a");
     if(!file){
-        perror("\nError: Failed to open actitvity_log.txt");
+        perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
 
@@ -98,7 +103,28 @@ void clientDisconnected(int client_socket){
 }
 
 void openBufferFile(char* buffer){
-    FILE *file = fopen("http_request.txt", "a");
+    pthread_mutex_lock(&log_mutex);
+    FILE *file = fopen("http_request.log", "a");
+    if(!file){
+        perror("\nError: Failed to open http_request.log");
+        exit(EXIT_FAILURE);
+    }
     fprintf(file, "%s", buffer);
     fclose(file);
+    pthread_mutex_unlock(&log_mutex);
+}
+
+// for debugging
+void printHexDump(const char *buffer, ssize_t len) {
+    pthread_mutex_lock(&log_mutex);
+    FILE *file = fopen("hex_dump.log", "a");
+
+    fprintf(file, "Hex Dump:\n");
+    for (ssize_t i = 0; i < len; i++) {
+        fprintf(file, "%02x ", (unsigned char)buffer[i]);
+        if ((i + 1) % 16 == 0) fprintf(file, "\n");
+    }
+    fprintf(file, "\n");
+    fclose(file);
+    pthread_mutex_unlock(&log_mutex);
 }

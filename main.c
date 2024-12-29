@@ -7,15 +7,48 @@
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
-#include "request.h"
+#include <stdbool.h>
+#include "client.h"
 #include "file.h"
 
 #define PORT 8080
+
+bool shutdown_flag = false;                                     // for server shutdown so al threads can be closed gracefully
+pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;     
+pthread_t thread_pool[100];                                     // pool of current active threads, max is 100
+int thread_count = 0;
+
+void* thread_function(void* arg){
+    while(1){
+        pthread_mutex_lock(&shutdown_mutex);
+        if(shutdown_flag){
+            pthread_mutex_unlock(&shutdown_mutex);
+            break;
+        }
+
+        pthread_mutex_unlock(&shutdown_mutex);
+        sleep(1);
+    }
+    return NULL;
+}
+
+void join_threads(){
+    for(int i = 0; i < thread_count; i++){
+        pthread_join(thread_pool[i], NULL);
+    }
+}
 
 // signal handler for SIGINT
 void sigInt(int sig){
     printf("\nShutting down server...\n");
     fflush(stdout);
+
+    pthread_mutex_lock(&shutdown_mutex);
+    shutdown_flag = true;
+    pthread_mutex_unlock(&shutdown_mutex);
+    
+    // wait for threads to finish
+    join_threads();
 
     sleep(2);
     closeLogFile(NULL);
@@ -81,9 +114,19 @@ int main(){
         }
 
         int *client_ptr = malloc(sizeof(int));
+        if(!client_ptr){
+            perror("\nError: Failed to allocate memory for client_ptr");
+            strcpy(errorMessage, strerror(errno));
+            strcat(errorMessage, ". Failed to allocate memory for client_ptr");         // concatenate error so it can be printed to activity_log.txt
+            close(client_fd);
+            closeLogFile(errorMessage);
+            exit(EXIT_FAILURE);
+        }
         *client_ptr = client_fd;
         pthread_t thread_id;
-        if(pthread_create(&thread_id, NULL, processCommands, client_ptr) != 0){
+
+        // send client_fd var to new thread to send requests to server_fd
+        if(pthread_create(&thread_id, NULL, handle_client, client_ptr) != 0){
             perror("\nError: Failed to create thread");
             strcpy(errorMessage, strerror(errno));
             strcat(errorMessage, ". Failed to create thread.");                 // concatenate error so it can be printed to activity_log.txt
@@ -92,6 +135,7 @@ int main(){
             closeLogFile(errorMessage);
             continue;   // can try again w/ this error
         }
+        thread_pool[thread_count++] = thread_id;
         pthread_detach(thread_id);
     }
 

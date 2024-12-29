@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-TARGET = main
+TARGET = http_server
 
-SRC = main.c request.c file.c
+SRC = main.c client.c file.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)

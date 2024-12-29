@@ -1,7 +1,2 @@
------------------------------------------------
-Activity log started on Wed Dec 25 22:52:54 2024
-Server has been started.
-Client connected to server. There are 1 client(s) connected.
-Client connected to server. There are 2 client(s) connected.
 Server has been stopped.
-Activity log closed on Wed Dec 25 22:53:26 2024
+Activity log closed on Sun Dec 29 10:24:44 2024
