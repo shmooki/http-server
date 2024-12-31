@@ -17,7 +17,7 @@ void openLogFile(){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
-    time_t curTime = time (NULL);
+    time_t curTime = time(NULL);
     struct tm *local_time = localtime(&curTime);
     fprintf(file, "-----------------------------------------------\n");
     fprintf(file, "Activity log started on %sServer has been started.\n", asctime(local_time));
@@ -60,7 +60,7 @@ void clientConnected(int client_socket){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
-    fprintf(file, "Client connected to server. There are %d client(s) connected.\n", client_count);
+    fprintf(file, "A cliient has connected to the server. There are %d client(s) connected.\n", client_count);
     fclose(file);
 
     /* 
@@ -69,7 +69,7 @@ void clientConnected(int client_socket){
         therefore server_socket in main will == 3 and every socket afterwards
         shall have a value >3
     */
-    printf("\nClient %d has connected to server.", client_socket - 3);
+    printf("\nA client has connected to the server.");
     fflush(stdout);
 
     pthread_mutex_unlock(&log_mutex);
@@ -87,7 +87,7 @@ void clientDisconnected(int client_socket){
     if (client_count > 0) {
         client_count--;
     }
-    fprintf(file, "Client disconnected from server. There are %d client(s) connected to the server.\n", client_count);
+    fprintf(file, "A client has disconnected from the server. There are %d client(s) connected to the server.\n", client_count);
     fclose(file);
 
     /* 
@@ -96,7 +96,7 @@ void clientDisconnected(int client_socket){
         therefore server_fd in main will == 3 and every client_fd afterwards
         shall have a value > 3
     */
-    printf("\nClient %d has disconnected from server.", client_socket - 3);
+    printf("\nA client has disconnected from the server (socket# = %d)", client_socket - 3);
     fflush(stdout);
           
     pthread_mutex_unlock(&log_mutex);
@@ -118,8 +118,16 @@ void openBufferFile(char* buffer){
 void printHexDump(const char *buffer, ssize_t len) {
     pthread_mutex_lock(&log_mutex);
     FILE *file = fopen("hex_dump.log", "a");
+    if(!file){
+        perror("Error: Failed to open hex_dump.log");
+        exit(EXIT_FAILURE);
+    }
 
-    fprintf(file, "Hex Dump:\n");
+    time_t curTime = time (NULL);
+    struct tm *local_time = localtime(&curTime);
+
+    fprintf(file, "-----------------------------------------------\n");
+    fprintf(file, "Hex Dump on %s\n", asctime(local_time));
     for (ssize_t i = 0; i < len; i++) {
         fprintf(file, "%02x ", (unsigned char)buffer[i]);
         if ((i + 1) % 16 == 0) fprintf(file, "\n");

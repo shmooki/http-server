@@ -13,46 +13,24 @@
 
 #define PORT 8080
 
-bool shutdown_flag = false;                                     // for server shutdown so al threads can be closed gracefully
-pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;     
-pthread_t thread_pool[100];                                     // pool of current active threads, max is 100
-int thread_count = 0;
-
-void* thread_function(void* arg){
-    while(1){
-        pthread_mutex_lock(&shutdown_mutex);
-        if(shutdown_flag){
-            pthread_mutex_unlock(&shutdown_mutex);
-            break;
-        }
-
-        pthread_mutex_unlock(&shutdown_mutex);
-        sleep(1);
-    }
-    return NULL;
-}
-
-void join_threads(){
-    for(int i = 0; i < thread_count; i++){
-        pthread_join(thread_pool[i], NULL);
-    }
-}
-
 // signal handler for SIGINT
 void sigInt(int sig){
     printf("\nShutting down server...\n");
     fflush(stdout);
-
-    pthread_mutex_lock(&shutdown_mutex);
-    shutdown_flag = true;
-    pthread_mutex_unlock(&shutdown_mutex);
-    
-    // wait for threads to finish
-    join_threads();
-
     sleep(2);
     closeLogFile(NULL);
     exit(EXIT_SUCCESS);
+}
+
+void set_nonblocking(int socket_fd) {
+    int flags = fcntl(socket_fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("Error: Failed to get socket flags");
+        return;
+    }
+    if (fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("Error: Failed to set socket to non-blocking mode");
+    }
 }
 
 int main(){
@@ -75,6 +53,9 @@ int main(){
     printf("Socket created successfully.");
     fflush(stdout);
     
+    // set server socket to non-blocking mode
+    set_nonblocking(server_fd);
+
     // bind server socket to port
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -105,13 +86,23 @@ int main(){
     while(1){
         client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
         if(client_fd < 0){
-            perror("\nError: Failed to accept client connection");
-            strcpy(errorMessage, strerror(errno));
-            strcat(errorMessage, ". Failed accept client connection.");         // concatenate error so it can be printed to activity_log.txt
-            close(client_fd);
-            closeLogFile(errorMessage);
-            continue;   // can try again w/ this error
+            // no incoming connection; continue
+            if(errno == EWOULDBLOCK || errno == EAGAIN){
+                usleep(10000);
+                continue;
+            }
+            else{
+                perror("\nError: Failed to accept client connection");
+                strcpy(errorMessage, strerror(errno));
+                strcat(errorMessage, ". Failed accept client connection.");         // concatenate error so it can be printed to activity_log.txt
+                close(client_fd);
+                closeLogFile(errorMessage);
+                continue;   // can try again w/ this error
+            }
         }
+
+        // set client socket to non-blocking mode
+        set_nonblocking(client_fd);
 
         int *client_ptr = malloc(sizeof(int));
         if(!client_ptr){
@@ -135,7 +126,6 @@ int main(){
             closeLogFile(errorMessage);
             continue;   // can try again w/ this error
         }
-        thread_pool[thread_count++] = thread_id;
         pthread_detach(thread_id);
     }
 

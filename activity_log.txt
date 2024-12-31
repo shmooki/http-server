@@ -1,2 +1,0 @@
-Server has been stopped.
-Activity log closed on Sun Dec 29 10:24:44 2024
