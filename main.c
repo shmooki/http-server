@@ -22,6 +22,7 @@ void sigInt(int sig){
     exit(EXIT_SUCCESS);
 }
 
+// function to set socket to non blocking mode (needed for certain functionalities)
 void set_nonblocking(int socket_fd) {
     int flags = fcntl(socket_fd, F_GETFL, 0);
     if (flags == -1) {
@@ -126,9 +127,13 @@ int main(){
             closeLogFile(errorMessage);
             continue;   // can try again w/ this error
         }
+
+        // detach thread so it runs independently of other
+        // main doesn't have to worry about its return values or completion
         pthread_detach(thread_id);
     }
 
+    // clean up
     close(client_fd);
     close(server_fd);
     closeLogFile(errorMessage);

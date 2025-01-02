@@ -5,3 +5,5 @@ request.c:
 2. extract requested file name
 3. identify extension
 4. build http response
+
+** maybe send shutdown signal to pthread for thread cleanup

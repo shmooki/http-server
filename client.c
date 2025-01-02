@@ -21,8 +21,11 @@ void *handle_client(void *arg){
     free(arg);
     clientConnected(client_fd);
 
-    char *buffer = (char*)malloc(buffer_size * sizeof(char));
-    char errorMessage[1024] = {0};                                              // for error messages in server_activity.log
+    // buffer for errors to be printed to log
+    char errorMessage[1024] = {0}; 
+
+    // buffer for requests    
+    char *buffer = (char*)malloc(buffer_size * sizeof(char));                                         
     if(!buffer){
         perror("\nError: Failed to allocate memory for buffer");
         strcpy(errorMessage, strerror(errno));
@@ -69,10 +72,14 @@ void *handle_client(void *arg){
                 break;
             }
 
-            //null terminate string
+            // null terminate string to ensure it's read correctly
             buffer[total_bytes] = '\0';
             openBufferFile(buffer);
             printHexDump(buffer, bytes_recv);
+
+            /*
+                url decode function here
+            */
         }
     }
 
