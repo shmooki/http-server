@@ -11,9 +11,33 @@
 
 #define buffer_size 8192
 
-void url_decode(const char* url){
+char* url_decode(const char* url){
+    size_t url_len = strlen(url);
+    char *request = malloc(url_len + 1);  
+    char *start = strchr(url, '/');
     
+    // Move past the '/' character
+    start++;
+
+    // Loop through the encoded URL until '\n' or end of string, copying to output
+    size_t i = 0;
+    while (*start != '\0' && *start != '\n' && i < url_len - 1) {
+        request[i++] = *start++;
+    }
+
+    request[i] = '\0';
+    return request;
 }
+
+// char *get_file_ext(){
+
+// }
+// char *get_mime_type(){
+
+// }
+// void build_response(){
+
+// }
 
 // thread function that handles client http requests
 void *handle_client(void *arg){
@@ -76,6 +100,9 @@ void *handle_client(void *arg){
             buffer[total_bytes] = '\0';
             openBufferFile(buffer);
             printHexDump(buffer, bytes_recv);
+            
+            url_decode(buffer);
+            // 
 
             /*
                 url decode function here

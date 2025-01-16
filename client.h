@@ -1,7 +1,7 @@
-#ifndef request_h
-#define request_h
+#ifndef client_h
+#define client_h
 
 void *handle_client(void* arg);
-void url_decode(const char* url);
+char* url_decode(const char* url);
 
 #endif
