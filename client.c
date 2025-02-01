@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "file.h"
 
 #define buffer_size 8192
@@ -49,12 +50,92 @@ char *get_file_ext(const char* request){
     return file_ext;
 }
 
-// char *get_mime_type(){
+char *get_file_name(const char *file_name){
+    size_t name_len = strlen(file_name);
+    char *name = malloc(name_len);  
+    char *start = strdup(file_name);
 
-// }
-// void build_response(){
+    printf("DEBUG: %p\n", start);
 
-// }
+    printf("\n%s", file_name);
+    printf("\nhelo from function\n");
+
+    size_t i = 0;
+    while (*start != '.' && i < name_len) {
+        name[i++] = *start++;
+    }
+
+    name[i] = '\0';
+    printf("\n%s\n", name);
+
+    free(start);
+    start = NULL;
+    printf("\nhiiiiii\n");
+    return name;
+}
+
+char *get_mime_type(const char *file_ext){
+    if (strcmp(file_ext, "html") == 0){
+        return "text/html";
+    } else if(strcmp(file_ext, "txt") == 0){
+        return "text/plain";
+    } else if(strcmp(file_ext, "png") == 0){
+        return "image/png";
+    } else if(strcmp(file_ext, "gif") == 0){
+        return "image/gif";
+    } else if(strcmp(file_ext, "mp4") == 0){
+        return "video/mp4";
+    } else{
+        return "application/octet-stream";
+    }
+}
+
+void http_response(const char *file_name, const char *file_ext, char *response, size_t *response_len){
+    const char *mime_type = get_mime_type(file_ext);
+    char *header = (char *)malloc(buffer_size * sizeof(char));
+    struct stat file_stat;
+
+    snprintf(header, buffer_size, "HTTP/1.1 200 OK\r\n"
+                                  "Content-type: %s\r\n"
+                                  "\r\n",
+                                  mime_type);   
+
+    // search for requested file
+    int file_fd = open(file_name, O_RDONLY);
+
+    if (file_fd == -1){
+        snprintf(header, buffer_size, "HTTP/1.1 404 Not Found\r\n"
+                                      "Content-Type: text/html\r\n"
+                                      "Content-Length: 58\r\n"
+                                      "\r\n"
+                                      "<html><body><h1>404 Not Found</h1></body></html>");
+        *response_len = strlen(response);
+        return;
+    }
+
+    // get file size
+    fstat(file_fd, &file_stat);
+    //off_t file_size = file_stat.st_size;
+
+    // copy header
+    *response_len = 0;
+    memcpy(response, header, strlen(header));
+    *response += strlen(header);
+
+    printf("\nheader is : %s", response);
+    fflush(stdout);
+
+    // copy file
+    ssize_t bytes_read;
+    while((bytes_read = read(file_fd, response + *response_len, buffer_size - *response_len)) > 0){
+        *response_len += bytes_read;
+    }
+
+    printf("\nresponse is : %s", response);
+    fflush(stdout);
+    free(header);
+    close(file_fd);
+}
 
 // thread function that handles client http requests
 void *handle_client(void *arg){
@@ -129,15 +210,38 @@ void *handle_client(void *arg){
                 free(buffer);
                 buffer = decoded_buffer;
             }
-            printf("\n%s", buffer);
+            printf("\n%s", decoded_buffer);
             fflush(stdout);
 
-            char *file_ext = get_file_ext(buffer);
+            printf("\nhello\n");
+            char *file_ext = get_file_ext(decoded_buffer);
+            
             printf("\n%s", file_ext);
+            printf("\nyeee\n");
             fflush(stdout);
+
+            printf("AAAAA\n");
+            char *file_name = get_file_name(buffer);
+            printf("AAAAA\n");
+            printf("\n%s", file_name);
+            fflush(stdout);
+
+            char *response = (char*)malloc(buffer_size*2*sizeof(char));
+            size_t response_len;
+
+            http_response(file_name, file_ext, response, &response_len);
+            printf("\n%s", response);
+            fflush(stdout);
+            send(client_fd, response, response_len, 0);
+
+            free(response);
+            response = NULL;
+            free(file_name);
+            file_name = NULL;
         }
     }
 
+    buffer = NULL;
     close(client_fd);
     pthread_mutex_unlock(&buffer_mutex);
     pthread_exit(NULL);
