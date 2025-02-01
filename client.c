@@ -11,6 +11,8 @@
 
 #define buffer_size 8192
 
+pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 char* url_decode(const char* url){
     size_t url_len = strlen(url);
     char *request = malloc(url_len + 1);  
@@ -21,7 +23,7 @@ char* url_decode(const char* url){
 
     // Loop through the encoded URL until '\n' or end of string, copying to output
     size_t i = 0;
-    while (*start != '\0' && *start != '\n' && i < url_len - 1) {
+    while (*start != ' ' && i < url_len - 1) {
         request[i++] = *start++;
     }
 
@@ -29,9 +31,24 @@ char* url_decode(const char* url){
     return request;
 }
 
-// char *get_file_ext(){
+char *get_file_ext(const char* request){
+    size_t ext_len = strlen(request);
+    char *file_ext = malloc(ext_len);  
+    char *start = strchr(request, '.');
+    
+    // Move past the '/' character
+    start++;
 
-// }
+    // Loop through the encoded URL until '\n' or end of string, copying to output
+    size_t i = 0;
+    while (*start != ' ' && i < ext_len) {
+        file_ext[i++] = *start++;
+    }
+
+    file_ext[i] = '\0';
+    return file_ext;
+}
+
 // char *get_mime_type(){
 
 // }
@@ -49,12 +66,14 @@ void *handle_client(void *arg){
     char errorMessage[1024] = {0}; 
 
     // buffer for requests    
-    char *buffer = (char*)malloc(buffer_size * sizeof(char));                                         
+    char *buffer = (char*)malloc(buffer_size * sizeof(char)); 
+    pthread_mutex_lock(&buffer_mutex);                                       
     if(!buffer){
         perror("\nError: Failed to allocate memory for buffer");
         strcpy(errorMessage, strerror(errno));
         closeLogFile(errorMessage);
         close(client_fd);
+        pthread_mutex_unlock(&buffer_mutex); 
         pthread_exit(NULL);
     }
 
@@ -74,17 +93,20 @@ void *handle_client(void *arg){
                 printf("\nClient forcibly disconnected.");
                 fflush(stdout);
                 clientDisconnected(client_fd);
+                free(buffer);
                 break;
             }
             else{
                 perror("\nError: receive failed");
                 clientDisconnected(client_fd);
+                free(buffer);
                 break;
             }
         }
         // client disconnected
         else if(bytes_recv == 0){
             clientDisconnected(client_fd);
+            free(buffer);
             break;
         }
         // process http request
@@ -93,6 +115,7 @@ void *handle_client(void *arg){
             total_bytes += bytes_recv;
             if(total_bytes >= buffer_size){
                 fprintf(stderr, "Buffer overflow detected.\n");
+                free(buffer);
                 break;
             }
 
@@ -101,16 +124,21 @@ void *handle_client(void *arg){
             openBufferFile(buffer);
             printHexDump(buffer, bytes_recv);
             
-            url_decode(buffer);
-            // 
+            char *decoded_buffer = url_decode(buffer);
+            if(decoded_buffer){
+                free(buffer);
+                buffer = decoded_buffer;
+            }
+            printf("\n%s", buffer);
+            fflush(stdout);
 
-            /*
-                url decode function here
-            */
+            char *file_ext = get_file_ext(buffer);
+            printf("\n%s", file_ext);
+            fflush(stdout);
         }
     }
 
-    free(buffer);
     close(client_fd);
+    pthread_mutex_unlock(&buffer_mutex);
     pthread_exit(NULL);
 }
