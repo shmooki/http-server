@@ -11,6 +11,7 @@
 #include "client.h"
 #include "file.h"
 
+// TODO random port function
 #define PORT 8080
 
 // signal handler for SIGINT

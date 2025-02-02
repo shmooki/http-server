@@ -53,14 +53,14 @@ void closeLogFile(char* errorMessage){
 
 // prints when a client has been connected to server to server_activity.log
 void clientConnected(int client_socket){
-    client_count++;
     pthread_mutex_lock(&log_mutex);
+    client_count++;
     FILE* file = fopen("server_activity.log", "a");
     if(!file){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
     }
-    fprintf(file, "A cliient has connected to the server. There are %d client(s) connected.\n", client_count);
+    fprintf(file, "A client has connected to the server. There are %d client(s) connected.\n", client_count);
     fclose(file);
 
     /* 
@@ -114,6 +114,23 @@ void openBufferFile(char* buffer){
     pthread_mutex_unlock(&log_mutex);
 }
 
+void openResponseFile(char *response){
+    pthread_mutex_lock(&log_mutex);
+
+    FILE *file = fopen("http_response.log", "a");
+    if(!file){
+        perror("\nError: Failed to open http_request.log");
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(file, "\n-----------------------------------------------\n");
+    fprintf(file, "%s", response);
+    fclose(file);
+
+    printf("\nA response has been sent to the client.");
+    fflush(stdout);
+    pthread_mutex_unlock(&log_mutex);
+}
 // for debugging
 void printHexDump(const char *buffer, ssize_t len) {
     pthread_mutex_lock(&log_mutex);
