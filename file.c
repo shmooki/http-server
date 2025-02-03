@@ -12,7 +12,7 @@ pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;      // mutex for thread-
 // prints when server was started to server_activity.log
 void openLogFile(){
     pthread_mutex_lock(&log_mutex);
-    FILE* file = fopen("server_activity.log", "a");
+    FILE* file = fopen("logs/server_activity.log", "a");
     if(!file){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
@@ -28,7 +28,7 @@ void openLogFile(){
 // prints when server was stopped to server_activity.log
 void closeLogFile(char* errorMessage){
     pthread_mutex_lock(&log_mutex);
-    FILE* file = fopen("server_activity.log", "a");
+    FILE* file = fopen("logs/server_activity.log", "a");
     if(!file){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
@@ -55,7 +55,7 @@ void closeLogFile(char* errorMessage){
 void clientConnected(int client_socket){
     pthread_mutex_lock(&log_mutex);
     client_count++;
-    FILE* file = fopen("server_activity.log", "a");
+    FILE* file = fopen("logs/server_activity.log", "a");
     if(!file){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
@@ -78,7 +78,7 @@ void clientConnected(int client_socket){
 // prints when a client has been disconnected to server to server_activity.log
 void clientDisconnected(int client_socket){
     pthread_mutex_lock(&log_mutex);
-    FILE* file = fopen("server_activity.log", "a");
+    FILE* file = fopen("logs/server_activity.log", "a");
     if(!file){
         perror("\nError: Failed to open server_activity.log");
         exit(EXIT_FAILURE);
@@ -104,7 +104,7 @@ void clientDisconnected(int client_socket){
 
 void openRequestFile(char* request){
     pthread_mutex_lock(&log_mutex);
-    FILE *file = fopen("http_request.log", "a");
+    FILE *file = fopen("logs/http_request.log", "a");
     if(!file){
         perror("\nError: Failed to open http_request.log");
         exit(EXIT_FAILURE);
@@ -123,7 +123,7 @@ void openRequestFile(char* request){
 void openResponseFile(char *response){
     pthread_mutex_lock(&log_mutex);
 
-    FILE *file = fopen("http_response.log", "a");
+    FILE *file = fopen("logs/http_response.log", "a");
     if(!file){
         perror("\nError: Failed to open http_request.log");
         exit(EXIT_FAILURE);
@@ -144,7 +144,7 @@ void openResponseFile(char *response){
 // for debugging
 void printHexDump(const char *buffer, ssize_t len) {
     pthread_mutex_lock(&log_mutex);
-    FILE *file = fopen("hex_dump.log", "a");
+    FILE *file = fopen("logs/hex_dump.log", "a");
     if(!file){
         perror("Error: Failed to open hex_dump.log");
         exit(EXIT_FAILURE);

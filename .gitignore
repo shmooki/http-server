@@ -1,3 +1,4 @@
 /http_server
 /*.o
-/*.log
+logs/
+.vscode/

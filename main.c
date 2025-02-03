@@ -12,13 +12,39 @@
 #include "file.h"
 
 // TODO random port function
+// TODO close server_fd & client_fd added to sigInt function somehow (?)
 #define PORT 8080
+
+// global file descriptors
+int server_fd = -1;
+int client_fd = -1;
+
+// thread safe access to client_fd
+pthread_mutex_t client_fd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // signal handler for SIGINT
 void sigInt(int sig){
     printf("\nShutting down server...\n");
     fflush(stdout);
     sleep(2);
+
+    // close client socket
+    pthread_mutex_lock(&client_fd_mutex);
+    if (client_fd != -1) {
+        close(client_fd);
+        printf("\nClosed client socket.\n");
+        fflush(stdout);
+    }
+    pthread_mutex_unlock(&client_fd_mutex);
+
+    // close server socket
+    
+    if (server_fd != -1) {
+        close(server_fd);
+        printf("\nClosed server socket.\n");
+        fflush(stdout);
+    }
+
     closeLogFile(NULL);
     exit(EXIT_SUCCESS);
 }
@@ -40,8 +66,7 @@ int main(){
     openLogFile();                  // open activity_log.txt to document requests  
     char errorMessage[1024] = {0};  // for error messages in activity_log.txt
 
-    // create server and client sockets
-    int server_fd, client_fd; 
+    // create server and client sockets 
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
     if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -86,7 +111,10 @@ int main(){
 
     // process incoming client connections
     while(1){
+        pthread_mutex_lock(&client_fd_mutex);
         client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+        pthread_mutex_unlock(&client_fd_mutex);
+
         if(client_fd < 0){
             // no incoming connection; continue
             if(errno == EWOULDBLOCK || errno == EAGAIN){
