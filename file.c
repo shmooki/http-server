@@ -102,14 +102,20 @@ void clientDisconnected(int client_socket){
     pthread_mutex_unlock(&log_mutex);
 }
 
-void openBufferFile(char* buffer){
+void openRequestFile(char* request){
     pthread_mutex_lock(&log_mutex);
     FILE *file = fopen("http_request.log", "a");
     if(!file){
         perror("\nError: Failed to open http_request.log");
         exit(EXIT_FAILURE);
     }
-    fprintf(file, "%s", buffer);
+
+    time_t curTime = time (NULL);
+    struct tm *local_time = localtime(&curTime);
+
+    fprintf(file, "-----------------------------------------------\n");
+    fprintf(file, "Request log on %s\n", asctime(local_time));
+    fprintf(file, "%s", request);
     fclose(file);
     pthread_mutex_unlock(&log_mutex);
 }
@@ -123,8 +129,12 @@ void openResponseFile(char *response){
         exit(EXIT_FAILURE);
     }
 
-    fprintf(file, "\n-----------------------------------------------\n");
-    fprintf(file, "%s", response);
+    time_t curTime = time (NULL);
+    struct tm *local_time = localtime(&curTime);
+
+    fprintf(file, "-----------------------------------------------\n");
+    fprintf(file, "Response log on %s\n", asctime(local_time));
+    fprintf(file, "%s\n", response);
     fclose(file);
 
     printf("\nA response has been sent to the client.");

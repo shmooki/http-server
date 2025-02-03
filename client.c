@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include "file.h"
 
-#define buffer_size 104857600
+#define buffer_size 257286400
 
 pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -117,14 +117,12 @@ void *handle_client(void *arg){
     int client_fd = *((int *)arg);
     free(arg);
     clientConnected(client_fd);
-    printf("\nafter pthread creation\n");
 
     // buffer for errors to be printed to log
     char errorMessage[1024] = {0}; 
 
     // buffer for requests    
-    char *buffer = (char*)malloc(buffer_size * sizeof(char)); 
-    pthread_mutex_lock(&buffer_mutex);                                       
+    char *buffer = (char*)malloc(buffer_size * sizeof(char));                                    
     if(!buffer){
         perror("\nError: Failed to allocate memory for buffer");
         strcpy(errorMessage, strerror(errno));
@@ -132,7 +130,6 @@ void *handle_client(void *arg){
         close(client_fd);
         pthread_exit(NULL);
     }
-    pthread_mutex_unlock(&buffer_mutex);
 
     // receive request from client and store in buffer 
     ssize_t total_bytes = 0;
@@ -147,47 +144,35 @@ void *handle_client(void *arg){
                 continue;
             }
             else if(errno == ECONNRESET || errno == EPIPE){
-                pthread_mutex_lock(&buffer_mutex);
                 printf("\nClient forcibly disconnected.");
                 fflush(stdout);
                 clientDisconnected(client_fd);
-                free(buffer);
-                pthread_mutex_unlock(&buffer_mutex);
                 break;
             }
             else{
-                pthread_mutex_lock(&buffer_mutex);
                 perror("\nError: receive failed");
+                printf("%p\n", buffer);
                 clientDisconnected(client_fd);
-                free(buffer);
-                pthread_mutex_unlock(&buffer_mutex);
                 break;
             }
         }
         // client disconnected
         else if(bytes_recv == 0){
-            pthread_mutex_lock(&buffer_mutex);
             clientDisconnected(client_fd);
-            free(buffer);
-            pthread_mutex_unlock(&buffer_mutex);
             break;
         }
         // process http request
         else{
-            pthread_mutex_lock(&buffer_mutex);
-
             // check for buffer overflow
             total_bytes += bytes_recv;
             if(total_bytes >= buffer_size){
                 fprintf(stderr, "Buffer overflow detected.\n");
-                free(buffer);
-                pthread_mutex_unlock(&buffer_mutex);
                 break;
             }
 
             // null terminate string to ensure it's read correctly
             buffer[total_bytes] = '\0';
-            openBufferFile(buffer);
+            openRequestFile(buffer);
             printHexDump(buffer, bytes_recv);
             
             char *file_name = url_decode(buffer);
@@ -207,10 +192,10 @@ void *handle_client(void *arg){
             file_ext = NULL;
             free(response);
             response = NULL;
-            pthread_mutex_unlock(&buffer_mutex);
         }
     }
 
+    free(buffer);
     buffer = NULL;
     close(client_fd);
     pthread_exit(NULL);

@@ -10,7 +10,7 @@ void openLogFile();
 void closeLogFile(char* errorMessage);
 void clientConnected(int client_socket);
 void clientDisconnected(int client_socket);
-void openBufferFile(char* buffer);
+void openRequestFile(char* request);
 void openResponseFile(char *response);
 void printHexDump(const char* buffer, ssize_t len);
 
