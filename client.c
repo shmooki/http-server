@@ -176,6 +176,9 @@ void *handle_client(void *arg){
             printHexDump(buffer, bytes_recv);
             
             char *file_name = url_decode(buffer);
+            if(strcmp(file_name, "favicon.ico") == 0){
+                continue;
+            }
             char *file_ext = get_file_ext(file_name);
             char *response = (char*)malloc(buffer_size*2*sizeof(char));
             size_t response_len;
