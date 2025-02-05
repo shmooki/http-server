@@ -3,7 +3,7 @@
 
 - media is stored in /media
 
-- run curl localhost:8080/media/<file> in terminal or http://localhost:8080/media/<file_name> in your browser
+- run curl localhost:8080/media/<file_name> in terminal or http://localhost:8080/media/<file_name> in your browser
 
 - ctrl + c in main terminal shutsdown the server gracefully
 
